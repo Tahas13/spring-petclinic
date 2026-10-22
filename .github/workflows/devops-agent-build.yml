@@ -1,0 +1,25 @@
+name: Build and push image
+
+on:
+  push:
+    branches: ["main", "devops/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push image
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login --username tahaa13 --password-stdin
+          docker build -t docker.io/tahaa13/spring-petclinic-petclinic:${{ github.sha }} .
+          docker tag docker.io/tahaa13/spring-petclinic-petclinic:${{ github.sha }} docker.io/tahaa13/spring-petclinic-petclinic:latest
+          docker push docker.io/tahaa13/spring-petclinic-petclinic:${{ github.sha }}
+          docker push docker.io/tahaa13/spring-petclinic-petclinic:latest
