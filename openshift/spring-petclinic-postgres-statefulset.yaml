@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: spring-petclinic-postgres
+  labels:
+    app: spring-petclinic-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-petclinic-postgres
+  serviceName: spring-petclinic-postgres
+  template:
+    metadata:
+      labels:
+        app: spring-petclinic-postgres
+    spec:
+      containers:
+      - name: spring-petclinic-postgres
+        image: quay.io/sclorg/postgresql-16-c9s
+        ports:
+        - containerPort: 5432
+          name: http
+        env:
+        - name: POSTGRESQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: spring-petclinic-postgres-credentials
+              key: username
+        - name: POSTGRESQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: spring-petclinic-postgres-credentials
+              key: password
+        - name: POSTGRESQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: spring-petclinic-postgres-credentials
+              key: database
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/pgsql/data
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+        startupProbe:
+          tcpSocket:
+            port: 5432
+          failureThreshold: 30
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 1
+          failureThreshold: 3
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 0
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-petclinic-postgres
+  labels:
+    app: spring-petclinic-postgres
+spec:
+  ports:
+  - port: 5432
+    targetPort: http
+  clusterIP: None
+  selector:
+    app: spring-petclinic-postgres
